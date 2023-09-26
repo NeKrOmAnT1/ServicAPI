@@ -17,7 +17,7 @@ namespace ServicAPI.Models
         {
             [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
             public int Id { get; set; }
-            public string ProductName { get; set; }
+            public string Productname { get; set; }
             public int Price { get; set; }
         }
     }

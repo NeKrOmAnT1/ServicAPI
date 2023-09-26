@@ -21,17 +21,23 @@ namespace ServicAPI.Controllers
             _context = context;
         }
 
-        [HttpPost("register")]
-        public IActionResult Register(User user)
+        [HttpPost("Register")]
+        public IActionResult Register([FromBody]User user)
         {
-            _context.Users.Add(user);
-            _context.SaveChanges();
-            return Ok("ПОльзователь зарегистрирован");
+            try
+            {
+                _context.Users.Add(user);
+                _context.SaveChanges();
+                return Ok("Пользователь зарегистрирован");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Ошибка при регистрации пользователя: {ex.Message}");
+            }
 
         }
-
-        [HttpPost("login")]
-        public IActionResult Login(User user)
+        [HttpPost("Login")]
+        public IActionResult Login([FromBody]User user)
         {
             var existingUser = _context.Users.SingleOrDefault(u => u.Username == user.Username && u.Password == user.Password);
             if (existingUser == null)
@@ -42,21 +48,18 @@ namespace ServicAPI.Controllers
 
             return Ok(existingUser.Token);
         }
-
+        private string secretKey = Guid.NewGuid().ToString();
         private string GenerateTemporaryToken()
         {
-            string secretKey = Guid.NewGuid().ToString();
-
             var claims = new List<Claim>
     {
-        new Claim(JwtRegisteredClaimNames.Sub, "username"), 
+        new Claim(JwtRegisteredClaimNames.Sub, "username"),
         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
     };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-           
             var expires = DateTime.UtcNow.AddMinutes(30);
 
             var token = new JwtSecurityToken(
@@ -84,50 +87,54 @@ namespace ServicAPI.Controllers
         }
 
 
-        [HttpGet]
-        [Authorize]
-        public IActionResult GetProducts()
+        [HttpGet("GetProduct")]
+        public IActionResult GetProducts([FromHeader] string authorizationToken)
         {
+            if (string.IsNullOrWhiteSpace(authorizationToken))
+            {
+                return Unauthorized("Не предоставлен временный токен.");
+            }
             var products = _context.Products.ToList();
             return Ok(products);
+
         }
 
-        /// <summary> На будущее, если у товара будет отдельная карта от каталога   
-        /// [HttpGet("{id}")]
-        /// </summary>
-        /// <param name="product"></param>
-        /// <returns></returns>
-        //public IActionResult GetProduct(int id)
-        //{
-        //    var product = _context.Products.Find(id);
-        //    if (product == null)
-        //        return NotFound("Не найден");
-
-        //    return Ok(product);
-        //}
-
-        [HttpPost]
-        public IActionResult AddProduct(Product product)
+        [HttpPost("AddProduct")]
+        public IActionResult AddProduct([FromBody] Product product, [FromHeader] string authorizationToken)
         {
+            if (string.IsNullOrWhiteSpace(authorizationToken))
+            {
+                return Unauthorized("Не предоставлен временный токен.");
+            }
             _context.Products.Add(product);
             _context.SaveChanges();
             return Ok("Продукт добавлен");
         }
 
-        [HttpPut("{id}")]
-        public IActionResult UpdateProduct(int id, Product product)
+        [HttpPut("UpdateProduct/{id}")]
+        public IActionResult UpdateProduct(int id, [FromBody] Product product, [FromHeader] string authorizationToken)
         {
+            if (string.IsNullOrWhiteSpace(authorizationToken))
+            {
+                return Unauthorized("Не предоставлен временный токен.");
+            }
             if (id != product.Id)
+            { 
                 return BadRequest("Неверный ID");
+            }    
 
             _context.Entry(product).State = EntityState.Modified;
             _context.SaveChanges();
             return Ok("Продукт обновлен");
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeleteProduct(int id)
+        [HttpDelete("DeleteProduct/{id}")]
+        public IActionResult DeleteProduct(int id, [FromHeader] string authorizationToken)
         {
+            if (string.IsNullOrWhiteSpace(authorizationToken))
+            {
+                return Unauthorized("Не предоставлен временный токен.");
+            }
             var product = _context.Products.Find(id);
             if (product == null)
                 return NotFound("Продукт не найден");

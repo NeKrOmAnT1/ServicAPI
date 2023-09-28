@@ -26,6 +26,11 @@ namespace ServicAPI.Controllers
         {
             try
             {
+                var existingUser = _context.Users.FirstOrDefault(u => u.Username == user.Username);
+                if (existingUser != null)
+                {
+                    return BadRequest("Пользователь с таким именем уже зарегистрирован.");
+                }
                 _context.Users.Add(user);
                 _context.SaveChanges();
                 return Ok("Пользователь зарегистрирован");
@@ -39,6 +44,8 @@ namespace ServicAPI.Controllers
         [HttpPost("Login")]
         public IActionResult Login([FromBody]User user)
         {
+            try
+            {
             var existingUser = _context.Users.SingleOrDefault(u => u.Username == user.Username && u.Password == user.Password);
             if (existingUser == null)
                 return Unauthorized("Неверные учетные данные");
@@ -47,6 +54,11 @@ namespace ServicAPI.Controllers
             _context.SaveChanges();
 
             return Ok(existingUser.Token);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Ошибка при авторизации пользователя: {ex.Message}");
+            }
         }
         private string secretKey = Guid.NewGuid().ToString();
         private string GenerateTemporaryToken()
@@ -86,7 +98,6 @@ namespace ServicAPI.Controllers
             _context = context;
         }
 
-
         [HttpGet("GetProduct")]
         public IActionResult GetProducts([FromHeader] string authorizationToken)
         {
@@ -94,6 +105,14 @@ namespace ServicAPI.Controllers
             {
                 return Unauthorized("Не предоставлен временный токен.");
             }
+
+            var user = _context.Users.Select(u => u.Token == authorizationToken);
+
+            if (user == null)
+            {
+                return Unauthorized("Неверный временный токен.");
+            }
+
             var products = _context.Products.ToList();
             return Ok(products);
 
@@ -112,19 +131,24 @@ namespace ServicAPI.Controllers
         }
 
         [HttpPut("UpdateProduct/{id}")]
-        public IActionResult UpdateProduct(int id, [FromBody] Product product, [FromHeader] string authorizationToken)
+        public IActionResult UpdateProduct( [FromBody] Product product, [FromHeader] string authorizationToken)
         {
             if (string.IsNullOrWhiteSpace(authorizationToken))
             {
                 return Unauthorized("Не предоставлен временный токен.");
             }
-            if (id != product.Id)
-            { 
-                return BadRequest("Неверный ID");
-            }    
-
-            _context.Entry(product).State = EntityState.Modified;
+            if (product == null)
+            {
+                return BadRequest("Неверный запрос.");
+            }
+            var existingProduct = _context.Products.SingleOrDefault(p => p.Id == product.Id);
+            if (existingProduct == null)
+            {
+                return NotFound("Продукт не найден.");
+            }
+            _context.Entry(existingProduct).CurrentValues.SetValues(product);
             _context.SaveChanges();
+
             return Ok("Продукт обновлен");
         }
 

@@ -8,10 +8,9 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 builder.Services.AddEndpointsApiExplorer();
-// Может поможет, я в тильт
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "TILT", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "It was difficult", Version = "v1" });
 });
 builder.Services.AddDbContext<ApplicationDbContext>();
 
